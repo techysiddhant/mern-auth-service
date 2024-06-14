@@ -1,1 +1,1 @@
-npm run lint # run the "lint" package script
+npx lint-staged # run the "lint" package script
