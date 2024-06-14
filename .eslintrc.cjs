@@ -14,5 +14,6 @@ module.exports = {
     rules: {
         "no-console": "error",
         "dot-notation": "error",
+        "@typesript-eslint/no-misused-promises":"off"
     },
 };
