@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { RegisterUserRequest } from "../types";
+import { AuthRequest, RegisterUserRequest } from "../types";
 import { UserService } from "../services/UserService";
 import { Logger } from "winston";
 import { validationResult } from "express-validator";
@@ -129,6 +129,69 @@ export class AuthController {
             return res.json({ id: user.id });
         } catch (err) {
             next(err);
+            return;
+        }
+    }
+    async self(req: AuthRequest, res: Response) {
+        const user = await this.userService.findById(Number(req.auth.sub));
+        res.json({ ...user, password: undefined });
+    }
+    async refresh(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const payload: JwtPayload = {
+                sub: String(req.auth.sub),
+                role: req.auth.role,
+            };
+            const accessToken = this.tokenService.generateAccessToken(payload);
+            const user = await this.userService.findById(Number(req.auth.sub));
+            if (!user) {
+                const error = createHttpError(
+                    400,
+                    "User with the token could not find",
+                );
+                next(error);
+                return;
+            }
+            // persist the refresh token
+            const newRefreshToken =
+                await this.tokenService.persistRefreshToken(user);
+            // Delete old refresh token
+            await this.tokenService.deleteRefreshToken(Number(req.auth.id));
+            const refreshToken = this.tokenService.generateRefreshToken({
+                ...payload,
+                id: String(newRefreshToken.id),
+            });
+            res.cookie("accessToken", accessToken, {
+                domain: "localhost",
+                httpOnly: true,
+                sameSite: "strict",
+                maxAge: 1000 * 60 * 60,
+            });
+            res.cookie("refreshToken", refreshToken, {
+                domain: "localhost",
+                httpOnly: true,
+                sameSite: "strict",
+                maxAge: 1000 * 60 * 60 * 24 * 365,
+            });
+
+            this.logger.info("User token has been refreshed", { id: user.id });
+            res.json({ id: user.id });
+        } catch (error) {
+            next(error);
+        }
+    }
+    async logout(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            await this.tokenService.deleteRefreshToken(Number(req.auth.id));
+            this.logger.info("Refresh token has been deleted", {
+                id: req.auth.id,
+            });
+            this.logger.info("User has been logged out", { id: req.auth.sub });
+            res.clearCookie("accessToken");
+            res.clearCookie("refreshToken");
+            res.json({ message: "User has been logged out" });
+        } catch (error) {
+            next(error);
             return;
         }
     }
