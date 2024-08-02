@@ -4,6 +4,7 @@ import logger from "./config/logger";
 import { HttpError } from "http-errors";
 import authRoutes from "./routes/auth";
 import tenantRouter from "./routes/tenant";
+import userRouter from "./routes/user";
 import cookieParse from "cookie-parser";
 const app = express();
 app.use(express.static("public"));
@@ -14,6 +15,7 @@ app.get("/", (req, res) => {
 });
 app.use("/auth", authRoutes);
 app.use("/tenants", tenantRouter);
+app.use("/users", userRouter);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: HttpError, req: Request, res: Response, next: NextFunction) => {
     logger.error(err.message);
