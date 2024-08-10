@@ -67,7 +67,7 @@ export class TenantController {
                 data: tenants,
             });
 
-            res.json(tenants);
+            // res.json(tenants);
         } catch (err) {
             next(err);
         }
